@@ -51,19 +51,3 @@ char* dequeue(BoundedQueue* queue) {
     sem_post(&(queue->empty));      // Increment the empty semaphore
     return dequeuedElement;
 }
-
-int main() {
-    BoundedQueue* queue = createBoundedQueue(BUFFER_SIZE);
-
-    // Enqueue elements
-    enqueue(queue, 1);
-    enqueue(queue, 2);
-    enqueue(queue, 3);
-
-    // Dequeue elements
-    dequeue(queue);
-    dequeue(queue);
-
-    destroyBoundedQueue(queue);
-    return 0;
-}

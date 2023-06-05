@@ -9,7 +9,7 @@ int queuesize;
 } Details;
 // Define the structure for a linked list element
 
-typedef struct Node {
+typedef struct detailNode {
     Details value;
-    struct Node* next;
+    struct derailNode* next;
 } detailNode;

@@ -6,15 +6,17 @@
 #include "DynamicArray.h"
 #include "linkedlist.c"
 #include "UBQ.c"
+#include <unistd.h>
 
 char* option = {"SPORT", "NEWS", "WEATHER"};
 int PRODUCER_NUM = 10;
-#define CO_EDIROT_NUM 3;
-Node* head;
+int CO_EDIROT_NUM = 3;
+detailNode* head;
 int size = 0;
 UnboundedQueue* sportQueue;
 UnboundedQueue* newsQueue;
 UnboundedQueue* weatherQueue;
+BoundedQueue* editorQueue;
 
 typedef struct {
     BoundedQueue* array;
@@ -30,21 +32,20 @@ void readFile(const char* filename) {
         return;
     }
     char buffer[1024];
-    int count, id, numberofproduce, queuesize = 0;
+    int id, numberofproduce, queuesize;
     while (fgets(buffer, sizeof(buffer), file) != NULL) {
-        count++;
-        if (count == 1) {
-            size++;
-            id = atoi(buffer) - 1;
-        }
-        if (count == 2)
+        if ((strcmp(buffer, "\n") != 0) )
+        {
+        id = atoi(buffer) - 1;
+        if (fgets(buffer, sizeof(buffer), file) != NULL)
         {
             numberofproduce = atoi(buffer);
+        }else{
+            CO_EDIROT_NUM = id + 1;
+            return;
         }
-        if (count == 3)
-        {
-            queuesize = atoi(buffer);
-        }
+        fgets(buffer, sizeof(buffer), file);
+        queuesize = atoi(buffer);
 
         detailNode* node = (detailNode*)malloc(sizeof(detailNode));
         node->value.id = id;
@@ -52,23 +53,26 @@ void readFile(const char* filename) {
         node->value.queuesize = queuesize;
         if (head = NULL)
         {
-            head = node;
+            head->value = node->value;
+            head->next = NULL;
         }
         else if (head->next == NULL)
         {
             head->next = node;
+            node->next = NULL;
         }
         else
         {
-            Node* temp = head;
+            detailNode* temp = head;
             while (temp->next != NULL)
             {
                 temp = temp->next;
             }
             temp->next = node;
+        }
+        size++;
     }
-        count = count % 3;
-    }
+}
     fclose(file);
 }
 
@@ -93,6 +97,87 @@ void* producer(void* arg){
     append(array, *queue);
 }
 
+void* dispatcher(){
+    int i, count = 0;
+    while (count != size) {
+        for (i = 0; i < size; i++) {
+            if (count == size) {
+                uEnqueue(sportQueue, "DONE");
+                uEnqueue(newsQueue, "DONE");
+                uEnqueue(weatherQueue, "DONE");
+                return;
+            }
+            char* element = dequeue(array[i].array);
+            if (element == NULL) {
+                continue;
+            }
+            if (strcmp(element,"DONE") == 0) {
+                destroyBoundedQueue(array[i].array);
+                count++;
+                continue;
+            }
+            if (strstr(element, "SPORT") != NULL) {
+                uEnqueue(sportQueue, element);
+            }
+            else if (strstr(element, "NEWS") != NULL) {
+                uEnqueue(newsQueue, element);
+            }
+            else if (strstr(element, "WEATHER") != NULL) {
+                uEnqueue(weatherQueue, element);
+            }
+        }
+    }
+}
+
+void* sportCoEditor(){
+        char* element = uDequeue(sportQueue);
+        while (strcmp(element,"DONE") != 0) {
+            sleep(0.1);
+           enqueue(editorQueue, element);
+           element = uDequeue(sportQueue);
+        }
+        destroyUnboundedQueue(sportQueue);
+        enqueue(editorQueue, "DONE");
+    }
+
+void* newsCoEditor(){
+        char* element = uDequeue(newsQueue);
+        while (element != "DONE") {
+           enqueue(editorQueue, element);
+           element = uDequeue(newsQueue);
+        }
+        destroyUnboundedQueue(newsQueue);
+        enqueue(editorQueue, "DONE");
+    }
+
+void* weatherCoEditor(){
+        char* element = uDequeue(weatherQueue);
+        while (element != "DONE") {
+           enqueue(editorQueue, element);
+           element = uDequeue(weatherQueue);
+        }
+        destroyUnboundedQueue(weatherQueue);
+        enqueue(editorQueue, "DONE");
+    }
+
+void* screenManager(){
+    int count = 0;
+    while (count < 2) {
+        char* element = dequeue(editorQueue);
+            if (element == NULL) {
+                continue;
+            }
+            else if (strcmp(element,"DONE") == 0) {
+                count++;
+                continue;
+                }else{
+                    printf("%s\n", element);
+                }
+                
+    }
+    destroyBoundedQueue(editorQueue);
+}
+
 int main(int argc, char *argv[]) {
     sportQueue = createUnboundedQueue();
     newsQueue = createUnboundedQueue();
@@ -106,146 +191,30 @@ int main(int argc, char *argv[]) {
     while (temp != NULL)
     {
         details[i] = temp->value;
-        temp = temp->next;
+        temp = temp->next; // problem ??
         i++;
     }
     for (i = 0; i < size; i++)
     {
-        array[i].array = createBoundedQueue(temp->value.queuesize);
+        array[i].array = createBoundedQueue(details[i].queuesize);
         pthread_t thread;
-        pthread_create(&thread, NULL, producer, &details[i]);
+        pthread_create(&thread, NULL, producer, &details[i]); // check the i
         array[i].thread = thread;
     }
+    pthread_t dispThread;
+    pthread_create(&dispThread, NULL, dispatcher, NULL);
+
+    // sport news wheter full
+    editorQueue = createBoundedQueue(CO_EDIROT_NUM);
+    pthread_t sportThread;
+    pthread_create(&sportThread, NULL, sportCoEditor, NULL);
+    pthread_t newsThread;
+    pthread_create(&newsThread, NULL, newsCoEditor, NULL);
+    pthread_t weatherThread;
+    pthread_create(&weatherThread, NULL, weatherCoEditor, NULL);
+    pthread_t screenThread;
+    pthread_create(&screenThread, NULL, screenManager, NULL);
 
     return 0;
 
-
 }
-
-
-// dispatcher(){
-//     while (true) {
-//         int count = 0;
-//         for (i = 0; i < size; i++) {
-//             if (count == size) {
-//                 sportQueue.enqueue("DONE");
-//                 newsQueue.enqueue("DONE");
-//                 weatherQueue.enqueue("DONE");
-//                 return;
-//             }
-//             // lock the mutex for the bounded queue
-//             char* element = array[i].array.dequeue();
-//             if (element == NULL) {
-//                 continue;
-//             }
-//             // unlock the mutex
-//             // lock the mutex for the unbounded queue
-//             if (element == "DONE") {
-//                 array[i].array.destroyBoundedQueue();
-//                 count++;
-//                 continue;
-//             }
-//             if (element == "SPORT") {
-//                 sportQueue.enqueue(element);
-//             }
-//             if (element == "NEWS") {
-//                 newsQueue.enqueue(element);
-//             }
-//             if (element == "WEATHER") {
-//                 weatherQueue.enqueue(element);
-//             }
-//         }
-//     }
-// }
-
-    // thrhead dispatcher
-
-    // mixedquere = new bounded queue(size = CO_EDITOR_QUEUE_SIZE)
-
-    //sportCoEditor(sportquere){
-        // count = 0;
-        // while (count < 3) {
-            // lock the mutex for the unbounded queue
-            // char* element = sportquere.dequeue();
-            // if (element == NULL) {
-                // continue;
-            // }
-            // unlock the mutex
-            // if (element == DONE) {
-                // mixedquere.enqueue("DONE");
-                // count++;
-                // destroy the unbounded queue
-                // return;
-            // }
-            // lock the mutex
-            // mixedquere.enqueue(element);
-            // unlock the mutex
-        // }
-    //newsCoEditor(newsquere){
-        // while (true) {
-            // lock the mutex for the unbounded queue
-            // char* element = newsquere.dequeue();
-            // if (element == NULL) {
-                // continue;
-            // }
-            // unlock the mutex
-            // if (element == DONE) {
-                // mixedquere.enqueue("DONE");
-                // destroy the unbounded queue
-                // return;
-            // }
-            // lock the mutex
-            // mixedquere.enqueue(element);
-            // unlock the mutex
-        // }
-    //weatherquereCoEditor(weatherquere){
-        // while (true) {
-            // lock the mutex for the unbounded queue
-            // char* element = weatherquere.dequeue();
-            // if (element == NULL) {
-                // continue;
-            // }
-            // unlock the mutex
-            // if (element == DONE) {
-                // mixedquere.enqueue("DONE");
-                // destroy the unbounded queue
-                // return;
-            // }
-            // lock the mutex
-            // mixedquere.enqueue(element);
-            // unlock the mutex
-        // }
-
-        //thread screenManager(mixedquere){
-            // int count = 0;
-            // while (count < 3) {
-                // lock the mutex for the bounded queue
-                // char* element = mixedquere.dequeue();
-                // if (element == NULL) {
-                    // continue;
-                // }
-                // unlock the mutex
-                // if (element == DONE) {
-                    // count++;
-                    // return;
-                // }
-                // print the element
-            // }
-
-//     PRODUCER 1
-// [number of products]
-// queue size = [size]
-
-
-// PRODUCER 2
-// [number of products]
-// queue size = [size]
-
-// …
-// …
-// …
-// PRODUCER n
-// [number of products]
-// queue size = [size]
-
-// Co-Editor queue size = [size]

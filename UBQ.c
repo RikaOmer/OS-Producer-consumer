@@ -36,7 +36,7 @@ void destroyUnboundedQueue(UnboundedQueue* queue) {
     free(queue);
 }
 
-void enqueue(UnboundedQueue* queue, int element) {
+void uEnqueue(UnboundedQueue* queue, char* element) {
     Node* newNode = (Node*)malloc(sizeof(Node));
     newNode->data = element;
     newNode->next = NULL;
@@ -58,12 +58,12 @@ void enqueue(UnboundedQueue* queue, int element) {
     pthread_mutex_unlock(&(queue->mutex)); // Release the mutex lock
 }
 
-int dequeue(UnboundedQueue* queue) {
+char* uDequeue(UnboundedQueue* queue) {
     sem_wait(&(queue->items));   // Wait for an available item
     pthread_mutex_lock(&(queue->mutex));   // Acquire the mutex lock
 
     Node* dequeuedNode = queue->front;
-    int dequeuedElement = dequeuedNode->data;
+    char* dequeuedElement = dequeuedNode->data;
 
     queue->front = queue->front->next;
     if (queue->front == NULL) {
@@ -76,22 +76,4 @@ int dequeue(UnboundedQueue* queue) {
     pthread_mutex_unlock(&(queue->mutex)); // Release the mutex lock
 
     return dequeuedElement;
-}
-
-int main() {
-    UnboundedQueue* queue = createUnboundedQueue();
-
-    // Enqueue elements
-    enqueue(queue, 1);
-    enqueue(queue, 2);
-    enqueue(queue, 3);
-
-    // Dequeue elements
-    int element1 = dequeue(queue);
-    int element2 = dequeue(queue);
-
-    printf("Dequeued elements: %d, %d\n", element1, element2);
-
-    destroyUnboundedQueue(queue);
-    return 0;
 }
