@@ -1,5 +1,6 @@
 #ifndef BOUNDEDQUEUE_H
 #define BOUNDEDQUEUE_H
+#include "semaphore.h"   
 
 typedef struct {
     char* array;                 // Array to hold the elements

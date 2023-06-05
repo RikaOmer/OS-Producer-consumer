@@ -4,13 +4,6 @@
 #include <semaphore.h>
 #include "UnboundedQueue.h"
 
-typedef struct {
-    Node* front;
-    Node* rear;
-    sem_t items;                // Semaphore to track the number of items in the queue
-    pthread_mutex_t mutex;      // Mutex to synchronize access to the queue
-} UnboundedQueue;
-
 UnboundedQueue* createUnboundedQueue() {
     UnboundedQueue* queue = (UnboundedQueue*)malloc(sizeof(UnboundedQueue));
     queue->front = NULL;

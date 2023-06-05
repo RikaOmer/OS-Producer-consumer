@@ -5,8 +5,9 @@
 #include "BoundedQueue.h"
 #include "UnboundedQueue.h"
 #include <unistd.h>
+#include <string.h>
 
-char* option = {"SPORT", "NEWS", "WEATHER"};
+char* option[] = {"SPORT", "NEWS", "WEATHER"};
 typedef struct {
 int id;
 int numberofproduce;
@@ -16,7 +17,7 @@ int queuesize;
 
 typedef struct detailNode {
     Details value;
-    struct derailNode* next;
+    struct detailNode* next;
 } detailNode;
 int PRODUCER_NUM = 10;
 int CO_EDIROT_NUM = 3;
@@ -91,19 +92,17 @@ void* producer(void* arg){
     int id = details.id;
     int numberOfProduce = details.numberofproduce;
     int queueSize = details.queuesize;
-    BoundedQueue* queue = createBoundedQueue(queueSize);
     int i;
     char* element;
     for (i = 0; i < numberOfProduce; i++) {
         int length = snprintf(NULL, 0, "Producer %d %s %d", id, option[i % 3], i / 3);
         char* element = (char*)malloc((length + 1) * sizeof(char));
          snprintf(element, length + 1, "Producer %d %s %d", id, option[i % 3], i / 3);
-         enqueue(queue, element); //enqueue the product
+         enqueue(array[id].array, element); //enqueue the product
         free(element);
     }
     element = "DONE";  // enter DONE into the queue
-    enqueue(queue, element);
-    append(array, *queue);
+    enqueue(array[id].array, element);
 }
 
 void* dispatcher(){
@@ -114,7 +113,7 @@ void* dispatcher(){
                 uEnqueue(sportQueue, "DONE");
                 uEnqueue(newsQueue, "DONE");
                 uEnqueue(weatherQueue, "DONE");
-                return;
+                return NULL;
             }
             char* element = dequeue(array[i].array);
             if (element == NULL) {

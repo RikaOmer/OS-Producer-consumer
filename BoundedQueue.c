@@ -32,10 +32,8 @@ void enqueue(BoundedQueue* queue, char* element) {
     pthread_mutex_lock(&(queue->mutex));    // Acquire the mutex lock
 
     int index = (queue->front + queue->length) % queue->capacity; // Calculate the index for enqueueing
-    queue->array[index] = element;
+    queue->array[index] = *element;
     queue->length++;
-    printf("Enqueued element: %d\n", element);
-
     pthread_mutex_unlock(&(queue->mutex));  // Release the mutex lock
     sem_post(&(queue->full));       // Increment the full semaphore
 }
