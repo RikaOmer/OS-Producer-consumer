@@ -3,12 +3,21 @@
 #include <stdlib.h>
 #include <pthread.h>
 #include "BoundedQueue.h"
-#include "DynamicArray.h"
-#include "linkedlist.c"
-#include "UBQ.c"
+#include "UnboundedQueue.h"
 #include <unistd.h>
 
 char* option = {"SPORT", "NEWS", "WEATHER"};
+typedef struct {
+int id;
+int numberofproduce;
+int queuesize;
+} Details;
+// Define the structure for a linked list element
+
+typedef struct detailNode {
+    Details value;
+    struct derailNode* next;
+} detailNode;
 int PRODUCER_NUM = 10;
 int CO_EDIROT_NUM = 3;
 detailNode* head;

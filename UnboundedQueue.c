@@ -2,11 +2,7 @@
 #include <stdlib.h>
 #include <pthread.h>
 #include <semaphore.h>
-
-typedef struct Node {
-    int data;
-    struct Node* next;
-} Node;
+#include "UnboundedQueue.h"
 
 typedef struct {
     Node* front;
