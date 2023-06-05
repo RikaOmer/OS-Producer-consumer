@@ -28,8 +28,8 @@ void readFile(const char* filename) {
     fclose(file);
 }
 
-int main() {
-    const char* filename = "example.txt";
+int main(int argc, char *argv[]) {
+    const char* filename = argv[1];
     readFile(filename);
     return 0;
 }
