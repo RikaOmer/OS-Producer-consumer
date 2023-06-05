@@ -1,62 +1,59 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <pthread.h>
+#include <semaphore.h>
+#include "BoundedQueue.h"
 
-typedef struct {
-    char* array;
-    int front;
-    int rear;
-    int capacity;
-    int length;
-} BoundedQueue;
+#define BUFFER_SIZE 5
+
 
 BoundedQueue* createBoundedQueue(int capacity) {
     BoundedQueue* queue = (BoundedQueue*)malloc(sizeof(BoundedQueue));
     queue->array = (char*)malloc(capacity * sizeof(char));
     queue->front = 0;
-    queue->rear = -1;
-    queue->capacity = capacity;
     queue->length = 0;
+    queue->capacity = capacity;
+    sem_init(&(queue->full), 0, 0);              // Initialize full semaphore to 0
+    sem_init(&(queue->empty), 0, capacity);      // Initialize empty semaphore to capacity
+    pthread_mutex_init(&(queue->mutex), NULL);   // Initialize mutex
     return queue;
 }
 
 void destroyBoundedQueue(BoundedQueue* queue) {
     free(queue->array);
+    sem_destroy(&(queue->full));
+    sem_destroy(&(queue->empty));
+    pthread_mutex_destroy(&(queue->mutex));
     free(queue);
 }
 
-int isFull(BoundedQueue* queue) {
-    return queue->length == queue->capacity;
-}
+void enqueue(BoundedQueue* queue, char* element) {
+    sem_wait(&(queue->empty));       // Wait for an available empty slot
+    pthread_mutex_lock(&(queue->mutex));    // Acquire the mutex lock
 
-int isEmpty(BoundedQueue* queue) {
-    return queue->length == 0;
-}
-
-void enqueue(BoundedQueue* queue, int element) {
-    if (isFull(queue)) {
-        printf("Queue is full. Unable to enqueue element %d.\n", element);
-        return;
-    }
-    queue->rear = (queue->rear + 1) % queue->capacity;
-    queue->array[queue->rear] = element;
+    int index = (queue->front + queue->length) % queue->capacity; // Calculate the index for enqueueing
+    queue->array[index] = element;
     queue->length++;
     printf("Enqueued element: %d\n", element);
+
+    pthread_mutex_unlock(&(queue->mutex));  // Release the mutex lock
+    sem_post(&(queue->full));       // Increment the full semaphore
 }
 
-void dequeue(BoundedQueue* queue) {
-    if (isEmpty(queue)) {
-        printf("Queue is empty. Unable to dequeue.\n");
-        return;
-    }
-    int dequeuedElement = queue->array[queue->front];
-    queue->front = (queue->front + 1) % queue->capacity;
+char* dequeue(BoundedQueue* queue) {
+    sem_wait(&(queue->full));       // Wait for a filled slot
+    pthread_mutex_lock(&(queue->mutex));    // Acquire the mutex lock
+
+    char* dequeuedElement = queue->array[queue->front];
+    queue->front = (queue->front + 1) % queue->capacity;    // Move the front index
     queue->length--;
-    printf("Dequeued element: %d\n", dequeuedElement);
+    pthread_mutex_unlock(&(queue->mutex));  // Release the mutex lock
+    sem_post(&(queue->empty));      // Increment the empty semaphore
+    return dequeuedElement;
 }
 
 int main() {
-    int capacity = 5;  // Maximum capacity of the queue
-    BoundedQueue* queue = createBoundedQueue(capacity);
+    BoundedQueue* queue = createBoundedQueue(BUFFER_SIZE);
 
     // Enqueue elements
     enqueue(queue, 1);

@@ -1,16 +1,69 @@
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <pthread.h>
+#include "BoundedQueue.h"
+#include "DynamicArray.h"
 
-// create dynamic array
+char* option = {"sport", "news", "weather"};
 
-// producer(int i, int numProducts, int queueSize){
-    // create a new bounded queue with size queueSize
-    // for (i = 0; i < numProducts; i++) {
-        // create a new product
-        // enqueue the product
-    // }
+void* threadFunction(void* arg) {
+    // This function will be executed in the new thread
+    int threadId = *((int*)arg);
+    printf("Thread %d: Hello, World!\n", threadId);
+    pthread_exit(NULL);
+}
+
+void readFile(const char* filename) {
+    FILE* file = fopen(filename, "r");
+    if (file == NULL) {
+        printf("Failed to open the file: %s\n", filename);
+        return;
+    }
+    char buffer[1024];
+    int count, id, numberofproduce, queuesize = 0;
+    int number = 0;
+    while (fgets(buffer, sizeof(buffer), file) != NULL) {
+        count++;
+        if (count == 1) {
+            number++;
+            id = atoi(buffer) - 1;
+        }
+        if (count == 2)
+        {
+            numberofproduce = atoi(buffer);
+        }
+        if (count == 3)
+        {
+            queuesize = atoi(buffer);
+        }
+        producer(id, numberofproduce, queuesize);
+        count = count % 3;
+        
+        return 0;
+    }
+    fclose(file);
+}
+
+
+producer(int id, int numProducts, int queueSize){
+    BoundedQueue* queue = createBoundedQueue(queueSize);
+    int i;
+    char* element;
+    char str[10];
+    sprintf(str, "%d", id);
+    for (i = 0; i < numProducts; i++) {
+        int length = snprintf(NULL, 0, "Producer %d %s %d", id, option[i % 3], i / 3);
+        char* result = (char*)malloc((length + 1) * sizeof(char));
+         snprintf(result, length + 1, "Producer %d %s %d", id, option[i % 3], i / 3);
+         queue.append(result); 
+       
+        //enqueue the product
+        free(result);
+    }
     // enter DONE into the queue
     
-//}
+}
 // for (i = 0; i < N; i++) { 
     // read from the input file the number of products and the queue size
     // pthred producer(i, numProducts, queueSize);
@@ -145,5 +198,13 @@
 
 // Co-Editor queue size = [size]
 
-#define PRODUCER_NUM 10;
+int PRODUCER_NUM = 10;
 #define CO_EDIROT_NUM 3;
+DynamicArray* array;
+
+int main(int argc, char *argv[]) {
+    DynamicArray* array = createDynamicArray(PRODUCER_NUM);
+    const char* filename = argv[1];
+    readFile(filename);
+    return 0;
+}
