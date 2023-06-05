@@ -4,15 +4,24 @@
 #include <pthread.h>
 #include "BoundedQueue.h"
 #include "DynamicArray.h"
+#include "linkedlist.c"
+#include "UBQ.c"
 
-char* option = {"sport", "news", "weather"};
+char* option = {"SPORT", "NEWS", "WEATHER"};
+int PRODUCER_NUM = 10;
+#define CO_EDIROT_NUM 3;
+Node* head;
+int size = 0;
+UnboundedQueue* sportQueue;
+UnboundedQueue* newsQueue;
+UnboundedQueue* weatherQueue;
 
-void* threadFunction(void* arg) {
-    // This function will be executed in the new thread
-    int threadId = *((int*)arg);
-    printf("Thread %d: Hello, World!\n", threadId);
-    pthread_exit(NULL);
-}
+typedef struct {
+    BoundedQueue* array;
+    pthread_t thread;
+}prodMangaer;
+
+prodMangaer* array;
 
 void readFile(const char* filename) {
     FILE* file = fopen(filename, "r");
@@ -22,11 +31,10 @@ void readFile(const char* filename) {
     }
     char buffer[1024];
     int count, id, numberofproduce, queuesize = 0;
-    int number = 0;
     while (fgets(buffer, sizeof(buffer), file) != NULL) {
         count++;
         if (count == 1) {
-            number++;
+            size++;
             id = atoi(buffer) - 1;
         }
         if (count == 2)
@@ -37,74 +45,118 @@ void readFile(const char* filename) {
         {
             queuesize = atoi(buffer);
         }
-        producer(id, numberofproduce, queuesize);
+
+        detailNode* node = (detailNode*)malloc(sizeof(detailNode));
+        node->value.id = id;
+        node->value.numberofproduce = numberofproduce;
+        node->value.queuesize = queuesize;
+        if (head = NULL)
+        {
+            head = node;
+        }
+        else if (head->next == NULL)
+        {
+            head->next = node;
+        }
+        else
+        {
+            Node* temp = head;
+            while (temp->next != NULL)
+            {
+                temp = temp->next;
+            }
+            temp->next = node;
+    }
         count = count % 3;
-        
-        return 0;
     }
     fclose(file);
 }
 
 
-producer(int id, int numProducts, int queueSize){
+void* producer(void* arg){
+    Details details = *((Details*)arg);
+    int id = details.id;
+    int numberOfProduce = details.numberofproduce;
+    int queueSize = details.queuesize;
     BoundedQueue* queue = createBoundedQueue(queueSize);
     int i;
     char* element;
-    char str[10];
-    sprintf(str, "%d", id);
-    for (i = 0; i < numProducts; i++) {
+    for (i = 0; i < numberOfProduce; i++) {
         int length = snprintf(NULL, 0, "Producer %d %s %d", id, option[i % 3], i / 3);
-        char* result = (char*)malloc((length + 1) * sizeof(char));
-         snprintf(result, length + 1, "Producer %d %s %d", id, option[i % 3], i / 3);
-         queue.append(result); 
-       
-        //enqueue the product
-        free(result);
+        char* element = (char*)malloc((length + 1) * sizeof(char));
+         snprintf(element, length + 1, "Producer %d %s %d", id, option[i % 3], i / 3);
+         enqueue(queue, element); //enqueue the product
+        free(element);
     }
-    // enter DONE into the queue
-    
+    element = "DONE";  // enter DONE into the queue
+    enqueue(queue, element);
+    append(array, *queue);
 }
-// for (i = 0; i < N; i++) { 
-    // read from the input file the number of products and the queue size
-    // pthred producer(i, numProducts, queueSize);
-// }
 
- // sportquere = new unbounded queue
- // newsquere = new unbounded queue
- // weatherquere = new unbounded queue
+int main(int argc, char *argv[]) {
+    sportQueue = createUnboundedQueue();
+    newsQueue = createUnboundedQueue();
+    weatherQueue = createUnboundedQueue();
+    const char* filename = argv[1];
+    readFile(filename);
+    array = (prodMangaer*)malloc(size * sizeof(prodMangaer));
+    int i = 0;
+    detailNode* temp = head;
+    Details* details = (Details*)malloc(sizeof(Details)*size);
+    while (temp != NULL)
+    {
+        details[i] = temp->value;
+        temp = temp->next;
+        i++;
+    }
+    for (i = 0; i < size; i++)
+    {
+        array[i].array = createBoundedQueue(temp->value.queuesize);
+        pthread_t thread;
+        pthread_create(&thread, NULL, producer, &details[i]);
+        array[i].thread = thread;
+    }
+
+    return 0;
+
+
+}
+
 
 // dispatcher(){
-    // while (true) {
-        // int count = 0;
-        // for (i = 0; i < N; i++) {
-            // if (count == N) {
-                // sportquere.enqueue("DONE");
-                // newsquere.enqueue("DONE");
-                // weatherquere.enqueue("DONE");
-                // return;
-            // lock the mutex for the bounded queue
-            // char* element = array[i].dequeue();
-            // if (element == NULL) {
-                // continue;
-            // }
-            // unlock the mutex
-            // lock the mutex for the unbounded queue
-            // if (element == DONE) {
-                // destroy the bounded queue
-                // count++;
-                // continue;
-            // }
-            // if (element == SPORT) {
-                // sportquere.enqueue(element);
-            // }
-            // if (element == NEWS) {
-                // newsquere.enqueue(element);
-            // }
-            // if (element == WEATHER) {
-                // weatherquere.enqueue(element);
-            // }
-        // }
-    // }
+//     while (true) {
+//         int count = 0;
+//         for (i = 0; i < size; i++) {
+//             if (count == size) {
+//                 sportQueue.enqueue("DONE");
+//                 newsQueue.enqueue("DONE");
+//                 weatherQueue.enqueue("DONE");
+//                 return;
+//             }
+//             // lock the mutex for the bounded queue
+//             char* element = array[i].array.dequeue();
+//             if (element == NULL) {
+//                 continue;
+//             }
+//             // unlock the mutex
+//             // lock the mutex for the unbounded queue
+//             if (element == "DONE") {
+//                 array[i].array.destroyBoundedQueue();
+//                 count++;
+//                 continue;
+//             }
+//             if (element == "SPORT") {
+//                 sportQueue.enqueue(element);
+//             }
+//             if (element == "NEWS") {
+//                 newsQueue.enqueue(element);
+//             }
+//             if (element == "WEATHER") {
+//                 weatherQueue.enqueue(element);
+//             }
+//         }
+//     }
+// }
 
     // thrhead dispatcher
 
@@ -197,14 +249,3 @@ producer(int id, int numProducts, int queueSize){
 // queue size = [size]
 
 // Co-Editor queue size = [size]
-
-int PRODUCER_NUM = 10;
-#define CO_EDIROT_NUM 3;
-DynamicArray* array;
-
-int main(int argc, char *argv[]) {
-    DynamicArray* array = createDynamicArray(PRODUCER_NUM);
-    const char* filename = argv[1];
-    readFile(filename);
-    return 0;
-}

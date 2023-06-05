@@ -11,12 +11,14 @@ typedef struct {
     pthread_mutex_t mutex;      // Mutex to synchronize access to the queue
 } BoundedQueue;
 
+
+
 BoundedQueue* createBoundedQueue(int capacity);
 void destroyBoundedQueue(BoundedQueue* queue);
 int isFull(BoundedQueue* queue);
 int isEmpty(BoundedQueue* queue);
 void enqueue(BoundedQueue* queue, char* element);
-void dequeue(BoundedQueue* queue);
+char* dequeue(BoundedQueue* queue);
 
 
 
